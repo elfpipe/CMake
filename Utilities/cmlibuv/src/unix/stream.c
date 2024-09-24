@@ -89,7 +89,11 @@ void uv__stream_init(uv_loop_t* loop,
   stream->write_queue_size = 0;
 
   if (loop->emfile_fd == -1) {
+#ifdef __amigaos4__
+    err = uv__open_cloexec("NIL:", O_RDONLY);
+#else
     err = uv__open_cloexec("/dev/null", O_RDONLY);
+#endif
     if (err < 0)
         /* In the rare case that "/dev/null" isn't mounted open "/"
          * instead.
@@ -1142,6 +1146,7 @@ static void uv__read(uv_stream_t* stream) {
           uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
           uv__stream_osx_interrupt_select(stream);
         }
+// NOTE NOTE NOTE : amiga. why 0 ?
         stream->read_cb(stream, 0, &buf);
 #if defined(__CYGWIN__) || defined(__MSYS__)
       } else if (errno == ECONNRESET && stream->type == UV_NAMED_PIPE) {

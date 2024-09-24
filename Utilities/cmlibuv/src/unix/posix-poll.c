@@ -27,6 +27,11 @@
  * events to pass as the first argument to poll().
  */
 
+#ifdef __amigaos4__
+#include <proto/dos.h>
+extern void uv__wait_children(uv_loop_t* loop);
+#endif
+
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -130,7 +135,6 @@ static void uv__pollfds_del(uv_loop_t* loop, int fd) {
   }
 }
 
-
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   sigset_t* pset;
   sigset_t set;
@@ -201,16 +205,30 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (pset != NULL)
       if (pthread_sigmask(SIG_BLOCK, pset, NULL))
         abort();
+
+#ifdef __amigaos4__
+    uint32 signals = SIGF_CHILD;
+    // printf("[uv__io_poll :] Calling waitpoll...\n");
+    nfds = waitpoll(loop->poll_fds, (nfds_t)loop->poll_fds_used, timeout, &signals);
+    // printf("[uv__io_poll :] Back from waitpoll. signals == %d\n", signals);
+#else
     nfds = poll(loop->poll_fds, (nfds_t)loop->poll_fds_used, timeout);
+#endif
     if (pset != NULL)
       if (pthread_sigmask(SIG_UNBLOCK, pset, NULL))
         abort();
-
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
      * operating system didn't reschedule our process while in the syscall.
      */
     SAVE_ERRNO(uv__update_time(loop));
+
+#ifdef __amigaos4__
+    if(signals & SIGF_CHILD) {
+      uv__wait_children(loop);
+      return;
+    }
+#endif
 
     if (nfds == 0) {
       if (reset_timeout != 0) {

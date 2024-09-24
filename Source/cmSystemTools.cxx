@@ -2432,7 +2432,11 @@ static void EnsureStdPipe(int fd)
     return;
   }
 
+#ifdef __amigaos4__
+  int f = open("NIL:", fd == STDIN_FILENO ? O_RDONLY : O_WRONLY);
+#else
   int f = open("/dev/null", fd == STDIN_FILENO ? O_RDONLY : O_WRONLY);
+#endif
   if (f == -1) {
     perror("failed to open /dev/null for missing stdio pipe");
     abort();
@@ -2570,7 +2574,12 @@ void cmSystemTools::FindCMakeResources(const char* argv0)
 #else
   std::string errorMsg;
   std::string exe;
+#ifdef __amigaos4__
+  // on amiga, we will require a fixed path to avoid issues with path resolution
+  if (cmSystemTools::FindProgramPath("/cmake-amiga/bin/cmake", exe, errorMsg)) {
+#else
   if (cmSystemTools::FindProgramPath(argv0, exe, errorMsg)) {
+#endif
     // remove symlinks
     exe = cmSystemTools::GetRealPath(exe);
     exe_dir = cmSystemTools::GetFilenamePath(exe);

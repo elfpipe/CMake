@@ -118,7 +118,6 @@ void uv__async_close(uv_async_t* handle) {
   uv__handle_stop(handle);
 }
 
-
 static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   char buf[1024];
   ssize_t r;
@@ -127,7 +126,6 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   uv_async_t* h;
 
   assert(w == &loop->async_io_watcher);
-
   for (;;) {
     r = read(w->fd, buf, sizeof(buf));
 

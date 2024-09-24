@@ -229,7 +229,7 @@ int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
   return uv_inet_pton(AF_INET, ip, &(addr->sin_addr.s_addr));
 }
 
-
+#ifndef __amigaos4__
 int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
   char address_part[40];
   size_t address_part_size;
@@ -287,7 +287,7 @@ int uv_ip_name(const struct sockaddr *src, char *dst, size_t size) {
     return UV_EAFNOSUPPORT;
   }
 }
-
+#endif
 
 int uv_tcp_bind(uv_tcp_t* handle,
                 const struct sockaddr* addr,
@@ -301,8 +301,10 @@ int uv_tcp_bind(uv_tcp_t* handle,
   }
   if (addr->sa_family == AF_INET)
     addrlen = sizeof(struct sockaddr_in);
+#ifndef __amigaos4__
   else if (addr->sa_family == AF_INET6)
     addrlen = sizeof(struct sockaddr_in6);
+#endif
   else
     return UV_EINVAL;
 
@@ -317,7 +319,11 @@ int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned flags) {
 
   /* Use the lower 8 bits for the domain. */
   domain = flags & 0xFF;
-  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+  if (domain != AF_INET
+#ifndef __amigaos4__
+      && domain != AF_INET6
+#endif
+      && domain != AF_UNSPEC)
     return UV_EINVAL;
 
   /* Use the higher bits for extra flags. */
@@ -350,8 +356,10 @@ int uv_udp_bind(uv_udp_t* handle,
 
   if (addr->sa_family == AF_INET)
     addrlen = sizeof(struct sockaddr_in);
+#ifndef __amigaos4__
   else if (addr->sa_family == AF_INET6)
     addrlen = sizeof(struct sockaddr_in6);
+#endif
   else
     return UV_EINVAL;
 
@@ -370,8 +378,10 @@ int uv_tcp_connect(uv_connect_t* req,
 
   if (addr->sa_family == AF_INET)
     addrlen = sizeof(struct sockaddr_in);
+#ifndef __amigaos4__
   else if (addr->sa_family == AF_INET6)
     addrlen = sizeof(struct sockaddr_in6);
+#endif
   else
     return UV_EINVAL;
 
@@ -395,8 +405,10 @@ int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
 
   if (addr->sa_family == AF_INET)
     addrlen = sizeof(struct sockaddr_in);
+#ifndef __amigaos4__
   else if (addr->sa_family == AF_INET6)
     addrlen = sizeof(struct sockaddr_in6);
+#endif
   else
     return UV_EINVAL;
 
@@ -436,8 +448,10 @@ int uv__udp_check_before_send(uv_udp_t* handle, const struct sockaddr* addr) {
   if (addr != NULL) {
     if (addr->sa_family == AF_INET)
       addrlen = sizeof(struct sockaddr_in);
+#ifndef __amigaos4__
     else if (addr->sa_family == AF_INET6)
       addrlen = sizeof(struct sockaddr_in6);
+#endif
 #if defined(AF_UNIX) && !defined(_WIN32)
     else if (addr->sa_family == AF_UNIX)
       addrlen = sizeof(struct sockaddr_un);

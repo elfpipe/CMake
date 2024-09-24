@@ -25,6 +25,11 @@
  ***************************************************************************/
 #include "curl_setup.h"
 
+#ifdef __amigaos4__
+// for cmake
+#define HAVE_PROTO_BSDSOCKET_H
+#endif
+
 #if defined(__AMIGA__) && defined(HAVE_PROTO_BSDSOCKET_H) && \
   (!defined(USE_AMISSL) || defined(__amigaos4__))
 

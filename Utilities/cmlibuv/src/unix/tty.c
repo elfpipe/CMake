@@ -82,7 +82,7 @@ int uv__tcsetattr(int fd, int how, const struct termios *term) {
 }
 
 static int uv__tty_is_slave(const int fd) {
-  int result;
+  int result = 0;
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__FreeBSD_kernel__)
   int dummy;
 
@@ -127,6 +127,7 @@ static int uv__tty_is_slave(const int fd) {
     abort();
 
   result = (pts == major(sb.st_rdev));
+#elif defined(__amigaos4__)
 #else
   /* Fallback to ptsname
    */
@@ -417,7 +418,11 @@ uv_handle_type uv_guess_handle(uv_file file) {
     return UV_UNKNOWN_HANDLE;
 
   if (type == SOCK_DGRAM)
-    if (ss.ss_family == AF_INET || ss.ss_family == AF_INET6)
+    if (   ss.ss_family == AF_INET
+#ifndef __amigaos4__
+        || ss.ss_family == AF_INET6
+#endif
+    )
       return UV_UDP;
 
   if (type == SOCK_STREAM) {
@@ -430,7 +435,11 @@ uv_handle_type uv_guess_handle(uv_file file) {
       return UV_NAMED_PIPE;
 #endif /* defined(_AIX) || defined(__DragonFly__) */
 
-    if (ss.ss_family == AF_INET || ss.ss_family == AF_INET6)
+    if (   ss.ss_family == AF_INET
+#ifndef __amigaos4__
+        || ss.ss_family == AF_INET6
+#endif
+    )
       return UV_TCP;
     if (ss.ss_family == AF_UNIX)
       return UV_NAMED_PIPE;

@@ -41,7 +41,9 @@
 #endif
 
 union uv__sockaddr {
+#ifndef __amigaos4__
   struct sockaddr_in6 in6;
+#endif
   struct sockaddr_in in;
   struct sockaddr addr;
 };
@@ -438,9 +440,12 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
       h.msg_namelen = 0;
     } else {
       h.msg_name = &req->addr;
+#ifndef __amigaos4__
       if (req->addr.ss_family == AF_INET6)
         h.msg_namelen = sizeof(struct sockaddr_in6);
-      else if (req->addr.ss_family == AF_INET)
+      else
+#endif
+      if (req->addr.ss_family == AF_INET)
         h.msg_namelen = sizeof(struct sockaddr_in);
       else if (req->addr.ss_family == AF_UNIX)
         h.msg_namelen = sizeof(struct sockaddr_un);
@@ -547,9 +552,11 @@ int uv__udp_bind(uv_udp_t* handle,
   if (flags & ~(UV_UDP_IPV6ONLY | UV_UDP_REUSEADDR | UV_UDP_LINUX_RECVERR))
     return UV_EINVAL;
 
+#ifndef __amigaos4__
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
   if ((flags & UV_UDP_IPV6ONLY) && addr->sa_family != AF_INET6)
     return UV_EINVAL;
+#endif
 
   fd = handle->io_watcher.fd;
   if (fd == -1) {
@@ -594,8 +601,10 @@ int uv__udp_bind(uv_udp_t* handle,
     return err;
   }
 
+#ifndef __amigaos4__
   if (addr->sa_family == AF_INET6)
     handle->flags |= UV_HANDLE_IPV6;
+#endif
 
   handle->flags |= UV_HANDLE_BOUND;
   return 0;
@@ -621,6 +630,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
     addrlen = sizeof *addr;
     break;
   }
+#ifndef __amigaos4__
   case AF_INET6:
   {
     struct sockaddr_in6* addr = &taddr.in6;
@@ -630,6 +640,7 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
     addrlen = sizeof *addr;
     break;
   }
+#endif
   default:
     assert(0 && "unsupported address family");
     abort();
@@ -891,7 +902,7 @@ static int uv__udp_set_membership4(uv_udp_t* handle,
   return 0;
 }
 
-
+#ifndef __amigaos4__
 static int uv__udp_set_membership6(uv_udp_t* handle,
                                    const struct sockaddr_in6* multicast_addr,
                                    const char* interface_addr,
@@ -937,14 +948,15 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
 
   return 0;
 }
-
+#endif
 
 #if !defined(__OpenBSD__) &&                                        \
     !defined(__NetBSD__) &&                                         \
     !defined(__ANDROID__) &&                                        \
     !defined(__DragonFly__) &&                                      \
     !defined(__QNX__) &&                                            \
-    !defined(__GNU__)
+    !defined(__GNU__) &&                                            \
+    !defined(__amigaos4__)
 static int uv__udp_set_source_membership4(uv_udp_t* handle,
                                           const struct sockaddr_in* multicast_addr,
                                           const char* interface_addr,
@@ -1109,18 +1121,22 @@ int uv_udp_set_membership(uv_udp_t* handle,
                           uv_membership membership) {
   int err;
   struct sockaddr_in addr4;
+#ifndef __amigaos4__
   struct sockaddr_in6 addr6;
+#endif
 
   if (uv_ip4_addr(multicast_addr, 0, &addr4) == 0) {
     err = uv__udp_maybe_deferred_bind(handle, AF_INET, UV_UDP_REUSEADDR);
     if (err)
       return err;
     return uv__udp_set_membership4(handle, &addr4, interface_addr, membership);
+#ifndef __amigaos4__
   } else if (uv_ip6_addr(multicast_addr, 0, &addr6) == 0) {
     err = uv__udp_maybe_deferred_bind(handle, AF_INET6, UV_UDP_REUSEADDR);
     if (err)
       return err;
     return uv__udp_set_membership6(handle, &addr6, interface_addr, membership);
+#endif
   } else {
     return UV_EINVAL;
   }
@@ -1137,7 +1153,8 @@ int uv_udp_set_source_membership(uv_udp_t* handle,
     !defined(__ANDROID__) &&                                        \
     !defined(__DragonFly__) &&                                      \
     !defined(__QNX__) &&                                            \
-    !defined(__GNU__)
+    !defined(__GNU__) &&                                            \
+    !defined(__amigaos4__)
   int err;
   union uv__sockaddr mcast_addr;
   union uv__sockaddr src_addr;
@@ -1178,6 +1195,7 @@ static int uv__setsockopt(uv_udp_t* handle,
                          socklen_t size) {
   int r;
 
+#ifndef __amigaos4__
   if (handle->flags & UV_HANDLE_IPV6)
     r = setsockopt(handle->io_watcher.fd,
                    IPPROTO_IPV6,
@@ -1185,6 +1203,7 @@ static int uv__setsockopt(uv_udp_t* handle,
                    val,
                    size);
   else
+#endif
     r = setsockopt(handle->io_watcher.fd,
                    IPPROTO_IP,
                    option4,
@@ -1262,6 +1281,7 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
 
 #endif /* defined(__sun) || defined(_AIX) || defined (__OpenBSD__) ||
           defined(__MVS__) || defined(__QNX__) */
+
 }
 
 
@@ -1317,24 +1337,33 @@ int uv_udp_set_multicast_loop(uv_udp_t* handle, int on) {
 int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr) {
   struct sockaddr_storage addr_st;
   struct sockaddr_in* addr4;
+#ifndef __amigaos4__
   struct sockaddr_in6* addr6;
+#endif
 
   addr4 = (struct sockaddr_in*) &addr_st;
+#ifndef __amigaos4__
   addr6 = (struct sockaddr_in6*) &addr_st;
+#endif
 
   if (!interface_addr) {
     memset(&addr_st, 0, sizeof addr_st);
+#ifndef __amigaos4__
     if (handle->flags & UV_HANDLE_IPV6) {
       addr_st.ss_family = AF_INET6;
       addr6->sin6_scope_id = 0;
-    } else {
+    } else
+#endif
+    {
       addr_st.ss_family = AF_INET;
       addr4->sin_addr.s_addr = htonl(INADDR_ANY);
     }
   } else if (uv_ip4_addr(interface_addr, 0, addr4) == 0) {
     /* nothing, address was parsed */
+#ifndef __amigaos4__
   } else if (uv_ip6_addr(interface_addr, 0, addr6) == 0) {
     /* nothing, address was parsed */
+#endif
   } else {
     return UV_EINVAL;
   }
@@ -1347,6 +1376,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
                    sizeof(addr4->sin_addr)) == -1) {
       return UV__ERR(errno);
     }
+#ifndef __amigaos4__
   } else if (addr_st.ss_family == AF_INET6) {
     if (setsockopt(handle->io_watcher.fd,
                    IPPROTO_IPV6,
@@ -1355,6 +1385,7 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
                    sizeof(addr6->sin6_scope_id)) == -1) {
       return UV__ERR(errno);
     }
+#endif
   } else {
     assert(0 && "unexpected address family");
     abort();

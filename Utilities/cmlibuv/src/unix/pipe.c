@@ -276,7 +276,6 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   /* only null-terminate if it's not an abstract socket */
   if (buffer[0] != '\0')
     buffer[addrlen] = '\0';
-
   return 0;
 }
 

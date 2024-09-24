@@ -70,8 +70,12 @@ static void uv__signal_global_init(void) {
      * it the handler functions will be called multiple times. Thus
      * we only want to do it once.
      */
+#ifdef __amigaos4__
+  do {} while(0);
+#else
     if (pthread_atfork(NULL, NULL, &uv__signal_global_reinit))
       abort();
+#endif
 
   uv__signal_global_reinit();
 }
@@ -279,8 +283,6 @@ static int uv__signal_loop_once_init(uv_loop_t* loop) {
 
 
 int uv__signal_loop_fork(uv_loop_t* loop) {
-  if (loop->signal_pipefd[0] == -1)
-    return 0;
   uv__io_stop(loop, &loop->signal_io_watcher, POLLIN);
   uv__close(loop->signal_pipefd[0]);
   uv__close(loop->signal_pipefd[1]);

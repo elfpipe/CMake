@@ -1122,6 +1122,11 @@ int do_open(int ac, char const* const* av)
 
 int main(int ac, char const* const* av)
 {
+#ifdef __amigaos4__
+  // Enable clib4 unix paths
+  enableUnixPaths();
+#endif
+
   cmSystemTools::EnsureStdPipes();
 
   // Replace streambuf so we can output Unicode to console

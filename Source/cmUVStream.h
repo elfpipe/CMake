@@ -144,7 +144,11 @@ std::unique_ptr<cmUVStreamReadHandle> cmUVStreamRead(uv_stream_t* stream,
         assert(buffer->base == data->Buffer.data());
         data->Buffer.resize(nread);
         data->OnRead(std::move(data->Buffer));
+#ifdef __amigaos4__
+      } else if (nread <= 0 /*|| nread == UV_EOF*/) {
+#else
       } else if (nread < 0 /*|| nread == UV_EOF*/) {
+#endif
         data->OnFinish();
         uv_read_stop(s);
       }

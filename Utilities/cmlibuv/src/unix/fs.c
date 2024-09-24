@@ -81,7 +81,8 @@
     defined(__FreeBSD__)          ||                                      \
     defined(__FreeBSD_kernel__)   ||                                      \
     defined(__OpenBSD__)          ||                                      \
-    defined(__NetBSD__)
+    defined(__NetBSD__)           ||                                      \
+    defined(__amigaos4__)
 # include <sys/param.h>
 # include <sys/mount.h>
 #elif defined(__sun)      || \
@@ -690,6 +691,7 @@ static int uv__fs_statfs(uv_fs_t* req) {
     defined(__HAIKU__)    || \
     defined(__QNX__)
   stat_fs->f_type = 0;  /* f_type is not supported. */
+#elif defined(__amigaos4__)
 #else
   stat_fs->f_type = buf.f_type;
 #endif
@@ -1475,7 +1477,8 @@ static void uv__to_stat(struct stat* src, uv_stat_t* dst) {
   dst->st_flags = 0;
   dst->st_gen = 0;
 #elif !defined(_AIX) &&         \
-    !defined(__MVS__) && (      \
+    !defined(__MVS__) &&        \
+    !defined(__amigaos4__) && (      \
     defined(__DragonFly__)   || \
     defined(__FreeBSD__)     || \
     defined(__OpenBSD__)     || \

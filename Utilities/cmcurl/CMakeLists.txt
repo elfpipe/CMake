@@ -1636,6 +1636,10 @@ check_include_file_concat("netinet/tcp.h"    HAVE_NETINET_TCP_H)
 check_include_file_concat("netinet/udp.h"    HAVE_NETINET_UDP_H)
 check_include_file("linux/tcp.h"      HAVE_LINUX_TCP_H)
 
+IF(AMIGA)
+  CHECK_INCLUDE_FILE("proto/bsdsocket.h" HAVE_PROTO_BSDSOCKET_H)
+ENDIF(AMIGA)
+
 check_include_file_concat("poll.h"           HAVE_POLL_H)
 check_include_file_concat("pwd.h"            HAVE_PWD_H)
 check_include_file_concat("stdatomic.h"      HAVE_STDATOMIC_H)

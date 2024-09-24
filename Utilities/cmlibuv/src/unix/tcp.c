@@ -89,8 +89,11 @@ static int maybe_new_socket(uv_tcp_t* handle, int domain, unsigned long flags) {
       if (getsockname(uv__stream_fd(handle), (struct sockaddr*) &saddr, &slen))
         return UV__ERR(errno);
 
-      if ((saddr.ss_family == AF_INET6 &&
+      if (
+#ifndef __amigaos4__
+        (saddr.ss_family == AF_INET6 &&
           ((struct sockaddr_in6*) &saddr)->sin6_port != 0) ||
+#endif
           (saddr.ss_family == AF_INET &&
           ((struct sockaddr_in*) &saddr)->sin_port != 0)) {
         /* Handle is already bound to a port. */
@@ -116,7 +119,11 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
 
   /* Use the lower 8 bits for the domain */
   domain = flags & 0xFF;
-  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+  if (domain != AF_INET
+#ifndef __amigaos4__
+      && domain != AF_INET6
+#endif
+      && domain != AF_UNSPEC)
     return UV_EINVAL;
 
   if (flags & ~0xFF)
@@ -152,9 +159,11 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   int err;
   int on;
 
+#ifndef __amigaos4__
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
   if ((flags & UV_TCP_IPV6ONLY) && addr->sa_family != AF_INET6)
     return UV_EINVAL;
+#endif
 
   err = maybe_new_socket(tcp, addr->sa_family, 0);
   if (err)
@@ -195,8 +204,10 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   tcp->delayed_error = (err == -1) ? UV__ERR(errno) : 0;
 
   tcp->flags |= UV_HANDLE_BOUND;
+#ifndef __amigaos4__
   if (addr->sa_family == AF_INET6)
     tcp->flags |= UV_HANDLE_IPV6;
+#endif
 
   return 0;
 }

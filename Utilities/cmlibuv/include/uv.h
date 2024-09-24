@@ -72,6 +72,11 @@ extern "C" {
 # include "uv/unix.h"
 #endif
 
+#ifdef __amigaos4__
+#include <limits.h> //SSIZE_MAX
+#endif
+
+
 /* Expand this list if necessary. */
 #define UV_ERRNO_MAP(XX)                                                      \
   XX(E2BIG, "argument list too long")                                         \
@@ -1145,6 +1150,14 @@ struct uv_interface_address_s {
   char* name;
   char phys_addr[6];
   int is_internal;
+#ifdef __amigaos4__
+  union {
+    struct sockaddr_in address4;
+  } address;
+  union {
+    struct sockaddr_in netmask4;
+  } netmask;
+#else
   union {
     struct sockaddr_in address4;
     struct sockaddr_in6 address6;
@@ -1153,6 +1166,7 @@ struct uv_interface_address_s {
     struct sockaddr_in netmask4;
     struct sockaddr_in6 netmask6;
   } netmask;
+#endif
 };
 
 struct uv_passwd_s {

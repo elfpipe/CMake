@@ -83,7 +83,7 @@ extern char **environ;
 #define UV_USE_SIGCHLD
 #elif defined(UV_HAVE_KQUEUE)
 #include <sys/event.h>
-#else
+#elif !defined(__amigaos4__)
 #define UV_USE_SIGCHLD
 #endif
 
@@ -92,27 +92,7 @@ static void uv__chld(uv_signal_t* handle, int signum) {
   assert(signum == SIGCHLD);
   uv__wait_children(handle->loop);
 }
-
-
-int uv__process_init(uv_loop_t* loop) {
-  int err;
-
-  err = uv_signal_init(loop, &loop->child_watcher);
-  if (err)
-    return err;
-  uv__handle_unref(&loop->child_watcher);
-  loop->child_watcher.flags |= UV_HANDLE_INTERNAL;
-  return 0;
-}
-
-
-#else
-int uv__process_init(uv_loop_t* loop) {
-  memset(&loop->child_watcher, 0, sizeof(loop->child_watcher));
-  return 0;
-}
 #endif
-
 
 void uv__wait_children(uv_loop_t* loop) {
   uv_process_t* process;
@@ -133,12 +113,11 @@ void uv__wait_children(uv_loop_t* loop) {
     process = QUEUE_DATA(q, uv_process_t, queue);
     q = QUEUE_NEXT(q);
 
-#ifndef UV_USE_SIGCHLD
+#if !defined(UV_USE_SIGCHLD)
     if ((process->flags & UV_HANDLE_REAP) == 0)
       continue;
     options = 0;
     process->flags &= ~UV_HANDLE_REAP;
-    loop->nfds--;
 #else
     options = WNOHANG;
 #endif
@@ -146,6 +125,7 @@ void uv__wait_children(uv_loop_t* loop) {
     do
       pid = waitpid(process->pid, &status, options);
     while (pid == -1 && errno == EINTR);
+
 
 #ifdef UV_USE_SIGCHLD
     if (pid == 0) /* Not yet exited */
@@ -179,6 +159,8 @@ void uv__wait_children(uv_loop_t* loop) {
     if (process->exit_cb == NULL)
       continue;
 
+    exit_status = process->status;
+    term_signal = 0; //todo
     exit_status = 0;
     if (WIFEXITED(process->status))
       exit_status = WEXITSTATUS(process->status);
@@ -850,6 +832,23 @@ error:
 }
 #endif
 
+#ifdef __amigaos4__
+#include <unistd.h>
+static int uv__do_create_new_process_amiga(uv_loop_t* loop,
+                                          const uv_process_options_t* options,
+                                          // const uv_process_t *_process,
+                                          int stdio_count,
+                                          int (*pipes)[2],
+                                          pid_t* pid)
+{
+  int result = spawnvpe(options->file, options->args, options->env, options->cwd, pipes[0][1], pipes[1][1], pipes[2][1]);
+  *pid = (pid_t)result;
+
+  return result > 0 ? 0 : -1;
+}
+#endif //__amigaos4__
+
+#ifndef __amigaos4__
 static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
                                          int stdio_count,
                                          int (*pipes)[2],
@@ -869,6 +868,7 @@ static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
   sigdelset(&signewset, SIGILL);
   sigdelset(&signewset, SIGSYS);
   sigdelset(&signewset, SIGABRT);
+
   if (pthread_sigmask(SIG_BLOCK, &signewset, &sigoldset) != 0)
     abort();
 
@@ -890,6 +890,7 @@ static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
   /* Fork succeeded, in the parent process */
   return 0;
 }
+#endif //__amigaos4__
 
 static int uv__spawn_and_init_child(
     uv_loop_t* loop,
@@ -932,6 +933,18 @@ static int uv__spawn_and_init_child(
     return err;
 
 #endif
+
+#if defined(__amigaos4__)
+  err = uv__do_create_new_process_amiga(loop, options, // process,
+                                        stdio_count,
+                                        pipes,
+                                        pid);
+  if(err) {
+    printf("[uv__do_create_new_process_amiga :] Failed to create new process.\n");                    
+    return UV_ENOSYS;
+  }
+  return 0;
+#else
 
   /* This pipe is used by the parent to wait until
    * the child has called `execve()`. We need this
@@ -994,6 +1007,7 @@ static int uv__spawn_and_init_child(
   uv__close_nocheckstdio(signal_pipe[0]);
 
   return err;
+#endif
 }
 
 int uv_spawn(uv_loop_t* loop,
@@ -1081,7 +1095,10 @@ int uv_spawn(uv_loop_t* loop,
    * fail to open a stdio handle. This ensures we can eventually reap the child
    * with waitpid. */
   if (exec_errorno == 0) {
-#ifndef UV_USE_SIGCHLD
+
+#if defined(__amigaos4__)
+  process->flags |= UV_HANDLE_REAP;
+#elif !defined(UV_USE_SIGCHLD)
     struct kevent event;
     EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
     if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL)) {
@@ -1091,10 +1108,6 @@ int uv_spawn(uv_loop_t* loop,
       process->flags |= UV_HANDLE_REAP;
       loop->flags |= UV_LOOP_REAP_CHILDREN;
     }
-    /* This prevents uv__io_poll() from bailing out prematurely, being unaware
-     * that we added an event here for it to react to. We will decrement this
-     * again after the waitpid call succeeds. */
-    loop->nfds++;
 #endif
 
     process->pid = pid;
@@ -1163,8 +1176,6 @@ int uv_kill(int pid, int signum) {
 void uv__process_close(uv_process_t* handle) {
   QUEUE_REMOVE(&handle->queue);
   uv__handle_stop(handle);
-#ifdef UV_USE_SIGCHLD
   if (QUEUE_EMPTY(&handle->loop->process_handles))
     uv_signal_stop(&handle->loop->child_watcher);
-#endif
 }

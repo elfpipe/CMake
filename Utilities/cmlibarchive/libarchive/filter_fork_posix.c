@@ -234,5 +234,15 @@ __archive_check_child(int in, int out)
 	sleep(1);
 #endif
 }
+#else // amigaos4
+#include "archive.h"
+int
+__archive_create_child(const char *cmd, int *child_stdin, int *child_stdout,
+		int *out_child) { 	return ARCHIVE_FAILED;
+}
+void
+__archive_check_child(int in, int out) {
+	sleep(1);
+}
 
 #endif /* defined(HAVE_PIPE) && defined(HAVE_VFORK) && defined(HAVE_FCNTL) */

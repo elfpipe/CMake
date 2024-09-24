@@ -366,7 +366,6 @@ static int uv__backend_timeout(const uv_loop_t* loop) {
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
       QUEUE_EMPTY(&loop->pending_queue) &&
       QUEUE_EMPTY(&loop->idle_handles) &&
-      (loop->flags & UV_LOOP_REAP_CHILDREN) == 0 &&
       loop->closing_handles == NULL)
     return uv__next_timeout(loop);
   return 0;
@@ -1172,6 +1171,9 @@ return_buffer:
 
 
 int uv__getpwuid_r(uv_passwd_t* pwd) {
+#ifdef __amigaos4__
+  return UV_ENOSYS;
+#else
   struct passwd pw;
   struct passwd* result;
   char* buf;
@@ -1242,6 +1244,7 @@ int uv__getpwuid_r(uv_passwd_t* pwd) {
   uv__free(buf);
 
   return 0;
+#endif
 }
 
 
@@ -1364,7 +1367,6 @@ int uv_os_setenv(const char* name, const char* value) {
   return 0;
 }
 
-
 int uv_os_unsetenv(const char* name) {
   if (name == NULL)
     return UV_EINVAL;
@@ -1440,7 +1442,11 @@ int uv_os_getpriority(uv_pid_t pid, int* priority) {
     return UV_EINVAL;
 
   errno = 0;
+#ifdef __amigaos4__
+  r = 0;
+#else
   r = getpriority(PRIO_PROCESS, (int) pid);
+#endif
 
   if (r == -1 && errno != 0)
     return UV__ERR(errno);
@@ -1454,8 +1460,10 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
   if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)
     return UV_EINVAL;
 
+#ifndef __amigaos4__
   if (setpriority(PRIO_PROCESS, (int) pid, priority) != 0)
     return UV__ERR(errno);
+#endif
 
   return 0;
 }
@@ -1553,6 +1561,9 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
 }
 
 void uv_sleep(unsigned int msec) {
+#ifdef __amigaos4__
+usleep(msec);
+#else
   struct timespec timeout;
   int rc;
 
@@ -1564,6 +1575,7 @@ void uv_sleep(unsigned int msec) {
   while (rc == -1 && errno == EINTR);
 
   assert(rc == 0);
+#endif
 }
 
 int uv__search_path(const char* prog, char* buf, size_t* buflen) {

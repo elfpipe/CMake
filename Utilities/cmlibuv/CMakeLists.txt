@@ -191,8 +191,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     src/unix/bsd-ifaddrs.c
     src/unix/darwin.c
     src/unix/darwin-proctitle.c
-    src/unix/fsevents.c
-    src/unix/kqueue.c
+    src/unix/no-fsevents.c
+    src/unix/posix-poll.c
     src/unix/proctitle.c
     )
 endif()
@@ -341,6 +341,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
   list(APPEND uv_libraries
     socket
     )
+endif()
+
+if(AMIGA)
+  list(APPEND uv_headers
+    include/uv/posix.h
+  )
+  list(APPEND uv_sources
+    src/unix/posix-hrtime.c
+    src/unix/posix-poll.c
+    src/unix/no-fsevents.c
+    src/unix/no-proctitle.c
+  )
 endif()
 
 include_directories(
